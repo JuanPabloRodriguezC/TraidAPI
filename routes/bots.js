@@ -4,54 +4,9 @@ import { Router } from 'express';
 export default function(pool){
   const router = Router();
 
-  router.get('/test-connection', async (req, res) => {
-    try {
-        const schemaResult = await pool.query('SHOW search_path');
-        const tableResult = await pool.query(`
-            SELECT table_schema, table_name 
-            FROM information_schema.tables 
-            WHERE table_name = 'bot'
-        `);
-        
-        res.json({
-            schema: schemaResult.rows[0].search_path,
-            tables: tableResult.rows
-        });
-    } catch (err) {
-        console.error('Test connection error:', err);
-        res.status(500).json({ error: err.message });
-    }
-  });
-
-  router.get('/db-info', async (req, res) => {
-    try {
-        const dbResult = await pool.query('SELECT current_database()');
-        res.json({
-            currentDatabase: dbResult.rows[0].current_database,
-            connectionInfo: {
-                database: process.env.DB_NAME,
-                host: process.env.DB_HOST,
-                port: process.env.DB_PORT,
-                user: process.env.DB_USER
-            }
-        });
-    } catch (err) {
-        console.error('Error getting database info:', err);
-        res.status(500).json({ error: err.message });
-    }
-  });
-
   // GET all bots
   router.get('/', async (req, res) => {
-    console.log('Starting GET /bots request');
-    try {
-
-      console.log('Testing database connection...');
-            
-      // First test the connection
-      await pool.query('SELECT 1');
-      console.log('Connection test successful');
-      
+    try {     
       console.log('Executing bot query...');
       
       const result = await pool.query('SELECT * FROM bot ORDER BY id');
@@ -69,12 +24,12 @@ export default function(pool){
       }
       if (err.code === '28P01') {
         return res.status(500).json({ error: 'Invalid database credentials' });
-      }
-      
-      res.status(500).json({ 
-        error: 'Failed to fetch bots',
-        details: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
+      }else{
+        return res.status(500).json({ 
+          error: 'Failed to fetch bots',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      } 
     }
   });
 
@@ -107,7 +62,7 @@ export default function(pool){
       }
       
       const result = await pool.query(
-        'INSERT INTO bot (name, desciption_id, sub_id, error) VALUES ($1, CURRENT_TIMESTAMP, $2) RETURNING *',
+        'INSERT INTO bot (name, desciption_id, sub_id, error) VALUES ($1, CURRENT_DATE, $2) RETURNING *',
         [name, rank]
       );
       res.status(201).json(result.rows[0]);
